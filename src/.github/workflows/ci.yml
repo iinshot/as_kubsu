@@ -6,7 +6,7 @@ on:
       - master
 
 env:
-  IMAGE_NAME: ghcr.io/iinshot/adm_kubsu/app
+  IMAGE_NAME: ghcr.io/iinshot/as_kubsu/app
 
 jobs:
   build-test-push:
