@@ -1,0 +1,53 @@
+name: CI-CD Pipeline
+
+on:
+  push:
+    branches:
+      - master
+
+env:
+  IMAGE_NAME: ghcr.io/vishnyakov06/kubsu-app/app
+
+jobs:
+  build-test-push:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      packages: write
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: kubsu
+          POSTGRES_PASSWORD: kubsu
+          POSTGRES_DB: kubsu
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Login to GHCR
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+      - name: Build image
+        run: docker build -t $IMAGE_NAME:latest .
+
+      - name: Run tests
+        run: |
+          docker run --rm \
+            --network host \
+            --entrypoint python \
+            -e DATABASE_URL=postgresql+psycopg://kubsu:kubsu@127.0.0.1:5432/kubsu \
+            $IMAGE_NAME:latest -m pytest tests/ -v
+
+      - name: Push image to GHCR
+        run: docker push $IMAGE_NAME:latest
